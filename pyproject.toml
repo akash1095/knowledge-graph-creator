@@ -1,0 +1,32 @@
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "knowledge_graph_creator"
+version = "0.1.0"
+description = "A package and experiment repo for knowledge graph creation research."
+authors = ["Akash Sujith <your-email@example.com>"]
+readme = "README.md"
+license = "MIT"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = ">=3.12"
+tqdm = "*"
+numpy = "*"
+pandas = "*"
+
+[tool.poetry.dev-dependencies]
+pytest = "*"
+black = "*"
+isort = "*"
+
+[tool.black]
+line-length = 88
+skip-string-normalization = false
+
+[tool.isort]
+profile = "black"
+
+# Optional: Add scripts, extras, etc. here
