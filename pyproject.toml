@@ -16,8 +16,13 @@ python = ">=3.12"
 tqdm = "*"
 numpy = "*"
 pandas = "*"
+pymupdf = "^1.26.4"
+pymupdf4llm = "^0.0.27"
+neo4j = "^5.28.2"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
+ipython = "^9.5.0"
+jupyter = "^1.1.1"
 pytest = "*"
 black = "*"
 isort = "*"
