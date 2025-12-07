@@ -70,3 +70,67 @@ class PDFToKnowledgeGraphOrchestrator:
         )
 
         return successful, unsuccessful
+
+    def process_pdf_to_graph_with_network(
+        self,
+        pdf_path: str,
+        parent_paper: ReferenceDetails,
+        reference_pages: List[int],
+        max_papers: int = None,
+        include_citations: bool = True,
+        max_citations_per_paper: int = 50,
+        rate_limit_delay: float = 1.0,
+    ):
+        """
+        Extract references from PDF and build extended knowledge graph with citation network.
+
+        This method builds a comprehensive citation network by:
+        1. Adding the parent paper
+        2. Adding references from the PDF
+        3. For each paper added, fetching and adding papers that cite it
+
+        Args:
+            pdf_path: Path to the PDF file
+            parent_paper: Details of the parent paper
+            reference_pages: List of page numbers containing references
+            max_papers: Maximum number of papers from PDF references to add (None for all)
+            include_citations: Whether to fetch and add citing papers for each paper
+            max_citations_per_paper: Maximum number of citing papers to add per paper
+            rate_limit_delay: Delay between API calls in seconds (default: 1.0)
+
+        Returns:
+            Tuple of (statistics_dict, unsuccessful_additions)
+            statistics_dict contains:
+                - parent_papers: Number of parent papers added (1)
+                - pdf_references: Number of references from PDF added
+                - citations_added: Number of citing papers added
+                - total_papers: Total papers added
+                - total_relationships: Total citation relationships created
+        """
+        # Step 1: Extract text from PDF pages
+        pages = self.pdf_reader.to_list(path=pdf_path, select_pages=reference_pages)
+
+        # Step 2: Extract references
+        references = {}
+        for page_text in pages:
+            references.update(self.reference_extractor.extract(text=page_text))
+
+        # Step 3: Parse reference details
+        references_details = []
+        for ref_id, ref_text in references.items():
+            details = self.details_extractor.parse_with_regex(
+                ref_id=ref_id, ref_text=ref_text
+            )
+            references_details.append(details)
+
+        # Step 4: Build knowledge graph with citation network
+        stats, unsuccessful = self.graph_builder.add_paper_with_citation_network(
+            parent_paper=parent_paper,
+            references=references_details,
+            max_papers=max_papers,
+            include_citations=include_citations,
+            max_citations_per_paper=max_citations_per_paper,
+            rate_limit_delay=rate_limit_delay,
+        )
+
+        return stats, unsuccessful

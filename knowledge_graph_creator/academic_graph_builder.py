@@ -1,5 +1,5 @@
 import time
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 from tqdm import tqdm
 
@@ -74,3 +74,127 @@ class AcademicGraphBuilder:
             self.kg.close()
 
         return successful_additions, unsuccessful_additions
+
+    def add_paper_with_citation_network(
+        self,
+        parent_paper: ReferenceDetails,
+        references: List[ReferenceDetails],
+        max_papers: int = None,
+        include_citations: bool = True,
+        max_citations_per_paper: int = 100,
+        rate_limit_delay: float = 1.0,
+    ) -> Tuple[Dict[str, int], List[ReferenceDetails]]:
+        """
+        Add a parent paper and its references with extended citation network.
+
+        For each paper added, optionally fetch and add papers that cite it,
+        creating a comprehensive citation network.
+
+        Args:
+            parent_paper: The parent paper details
+            references: List of reference paper details from PDF
+            max_papers: Maximum number of papers from PDF references to add (None for all)
+            include_citations: Whether to fetch and add citing papers for each paper
+            max_citations_per_paper: Maximum number of citing papers to add per paper
+            rate_limit_delay: Delay between API calls in seconds
+
+        Returns:
+            Tuple of (statistics_dict, unsuccessful_additions)
+            statistics_dict contains:
+                - parent_papers: Number of parent papers added (1)
+                - pdf_references: Number of references from PDF added
+                - citations_added: Number of citing papers added
+                - total_papers: Total papers added
+                - total_relationships: Total citation relationships created
+        """
+        stats = {
+            "parent_papers": 0,
+            "pdf_references": 0,
+            "citations_added": 0,
+            "total_papers": 0,
+            "total_relationships": 0,
+        }
+        unsuccessful_additions = []
+
+        try:
+            # Add parent paper
+            tqdm.write(f"Adding parent paper: {parent_paper.title}")
+            parent_paper_json = self.ss_client.get_paper_by_title(parent_paper.title)
+
+            if not parent_paper_json:
+                raise ValueError(f"Parent paper not found: {parent_paper.title}")
+
+            parent_paper_id = self.kg.add_paper_from_json(
+                parent_paper_json, return_paper_id=True
+            )
+            stats["parent_papers"] = 1
+            stats["total_papers"] = 1
+
+            # Track all paper IDs to fetch citations for
+            papers_to_process = [(parent_paper_id, "parent")]
+
+            # Add referenced papers from PDF
+            tqdm.write(f"\nAdding references from PDF...")
+            for reference in tqdm(
+                references, desc="PDF References", mininterval=0.1, dynamic_ncols=True
+            ):
+                paper_json = self.ss_client.get_paper_by_title(reference.title)
+
+                if paper_json:
+                    paper_id = self.kg.add_paper_from_json(
+                        paper_json, return_paper_id=True
+                    )
+                    self.kg.add_citation_relationship(
+                        citing_paper_id=parent_paper_id, cited_paper_id=paper_id
+                    )
+                    stats["pdf_references"] += 1
+                    stats["total_papers"] += 1
+                    stats["total_relationships"] += 1
+
+                    # Add to processing queue for citation fetching
+                    papers_to_process.append((paper_id, reference.title))
+
+                    if max_papers and stats["pdf_references"] >= max_papers:
+                        break
+                else:
+                    tqdm.write(f"Paper not found: {reference.title}")
+                    unsuccessful_additions.append(reference)
+
+                time.sleep(rate_limit_delay)
+
+            # Fetch and add citing papers for each paper
+            if include_citations and max_citations_per_paper > 0:
+                tqdm.write(f"\nFetching citation networks...")
+                for paper_id, paper_title in tqdm(
+                    papers_to_process,
+                    desc="Citation Networks",
+                    mininterval=0.1,
+                    dynamic_ncols=True,
+                ):
+                    citations_response = self.ss_client.get_paper_citations(
+                        paper_id=paper_id, limit=max_citations_per_paper
+                    )
+
+                    if citations_response and citations_response.get("data"):
+                        for citation_item in citations_response["data"]:
+                            citing_paper = citation_item.get("citingPaper")
+                            if citing_paper:
+                                citing_paper_id = self.kg.add_paper_from_json(
+                                    citing_paper, return_paper_id=True
+                                )
+                                self.kg.add_citation_relationship(
+                                    citing_paper_id=citing_paper_id,
+                                    cited_paper_id=paper_id,
+                                )
+                                stats["citations_added"] += 1
+                                stats["total_papers"] += 1
+                                stats["total_relationships"] += 1
+
+                            time.sleep(rate_limit_delay)
+
+                    time.sleep(rate_limit_delay)
+
+        finally:
+            self.kg.close()
+
+        return stats, unsuccessful_additions

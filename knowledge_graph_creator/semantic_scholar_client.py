@@ -48,3 +48,57 @@ class SemanticScholarClient:
         except Exception as e:
             print(f"Error fetching paper JSON for query '{title}': {e}")
             return None
+
+    def get_paper_citations(
+        self, paper_id: str, limit: int = 100, offset: int = 0
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Fetch papers that cite the given paper.
+
+        Args:
+            paper_id: Semantic Scholar paper ID
+            limit: Maximum number of citations to fetch (max 1000)
+            offset: Pagination offset
+
+        Returns:
+            Dictionary containing citation data with structure:
+            {
+                "data": [
+                    {
+                        "citingPaper": {
+                            "paperId": "...",
+                            "title": "...",
+                            "year": 2023,
+                            ...
+                        }
+                    }
+                ],
+                "offset": 0,
+                "next": 100
+            }
+            Returns None if error occurs.
+        """
+        try:
+            url = f"{self.base_url}/paper/{paper_id}/citations"
+            query_params = {
+                "fields": "paperId,corpusId,url,title,abstract,venue,publicationVenue,year,"
+                "referenceCount,citationCount,influentialCitationCount,isOpenAccess,"
+                "openAccessPdf,fieldsOfStudy,s2FieldsOfStudy,publicationTypes,"
+                "publicationDate,journal,authors",
+                "limit": min(limit, 1000),  # API max is 1000
+                "offset": offset,
+            }
+            response = requests.get(
+                url, params=query_params, headers=self.headers
+            ).json()
+
+            if "error" in response:
+                print(
+                    f"API Error fetching citations for paper '{paper_id}': {response['error']}"
+                )
+                return None
+
+            return response
+        except Exception as e:
+            print(f"Error fetching citations for paper '{paper_id}': {e}")
+            return None
