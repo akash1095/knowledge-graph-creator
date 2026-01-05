@@ -1,0 +1,91 @@
+{
+  "scientific_kg_relations": {
+    "Extends": {
+      "label": "Extends",
+      "description": "Indicates that one work builds upon, generalizes, or advances the methodology, theory, or findings of another. This relationship captures incremental research progression where subsequent work maintains conceptual continuity while introducing novel contributions. For instance, 'Transformer architecture extends attention mechanisms to enable parallel processing' or 'BERT extends pre-training strategies by introducing masked language modeling.'",
+      "justification": "This relationship is critical for mapping research evolution and identifying methodological lineages. Unlike simple citation analysis, 'Extends' requires semantic understanding of whether new work genuinely advances prior concepts rather than merely referencing them. For newcomers, this relation provides a clear learning path by showing which papers to read sequentially. It is extractable from abstract phrases such as 'building upon,' 'generalizing,' 'improving upon,' and 'advancing.' Evaluation involves verifying temporal ordering (newer extends older), citation presence, and methodological similarity, making it both automatable and validatable."
+    },
+    
+    "Solves": {
+      "label": "Solves",
+      "description": "Establishes a direct problem-solution relationship where a method, approach, or technique addresses a specific challenge, limitation, or gap identified in the research domain. This asymmetric relation connects identified problems with their proposed solutions. For example, 'Dropout solves overfitting in deep neural networks' or 'Beam search solves the greediness limitation of sequential decoding.'",
+      "justification": "This relationship is uniquely valuable for domain comprehension as it directly maps the problem landscape to solution space, enabling newcomers to understand not just what methods exist, but why they were developed. Traditional schemas capture method usage but not the motivating problems. Extractability is high due to explicit problem-solution discourse in abstracts using phrases like 'addresses,' 'tackles,' 'mitigates,' or 'overcomes.' Evaluation can be performed by verifying that the problem entity temporally precedes or co-occurs with the solution, and that the abstract explicitly mentions the problem-solution connection. This relation has not been formalized in existing single-paper annotation schemas."
+    },
+    
+    "Outperforms": {
+      "label": "Outperforms",
+      "description": "Denotes empirical superiority of one method, model, or approach over another based on quantitative evaluation metrics. This relation captures comparative performance claims supported by experimental evidence. For instance, 'GPT-3 outperforms BERT on few-shot learning tasks' or 'Adam optimizer outperforms SGD in convergence speed for transformer training.'",
+      "justification": "Performance comparison is fundamental for practical decision-making in research but is absent from structural annotation schemas. This relation helps newcomers identify state-of-the-art methods and understand empirical progress in the field. Unlike the generic 'Compare' relation, 'Outperforms' is unidirectional and evidence-based, requiring explicit performance metrics or comparative evaluation. Extraction relies on identifying comparative language ('outperforms,' 'achieves higher,' 'surpasses') coupled with metric mentions (F1, accuracy, BLEU). Evaluation involves verifying the presence of experimental results and quantitative comparisons, making it objectively assessable. This relation is novel in its focus on empirical rather than conceptual relationships."
+    },
+    
+    "Validates": {
+      "label": "Validates",
+      "description": "Indicates that one work provides empirical confirmation, experimental verification, or theoretical proof for claims, hypotheses, or findings from another work. This relationship captures the scientific validation process across studies. For example, 'Independent replication study validates the scaling laws for language models' or 'Cross-lingual experiments validate the language-agnostic properties of multilingual embeddings.'",
+      "justification": "Scientific consensus emerges through validation across multiple studies, yet this meta-relationship is not captured in single-paper schemas. For newcomers, 'Validates' signals reliable, corroborated knowledge versus speculative claims, crucial for building accurate mental models of the domain. This relation is extractable through phrases like 'confirms,' 'verifies,' 'corroborates,' 'demonstrates,' or 'provides evidence for.' Evaluation requires checking that the validating work cites the original claim and presents supporting evidence. This is particularly valuable for identifying robust findings in fields with replication concerns and has not been explicitly formalized in existing KG schemas for scientific literature."
+    },
+    
+    "Contradicts": {
+      "label": "Contradicts",
+      "description": "Represents a relationship where findings, claims, or conclusions of one work are in direct opposition to those of another, indicating disagreement or conflicting evidence within the research domain. For instance, 'Recent analysis contradicts the hypothesis that larger models always generalize better' or 'Empirical study contradicts theoretical predictions about optimization landscape smoothness.'",
+      "justification": "Scientific progress often involves resolving contradictions, yet existing schemas focus on positive relationships (usage, composition). Identifying contradictions is essential for newcomers to understand ongoing debates, controversial claims, and areas of uncertainty. This relation prevents newcomers from accepting all published claims uncritically. Extraction is possible through explicit contradiction markers ('contradicts,' 'challenges,' 'disputes,' 'refutes') and contrastive discourse patterns. Evaluation involves verifying that both works address the same phenomenon with incompatible conclusions. While the generic 'Compare' relation exists, 'Contradicts' is specifically focused on conflicting evidence, making it more semantically precise and actionable for knowledge synthesis."
+    },
+    
+    "Requires": {
+      "label": "Requires",
+      "description": "Specifies a dependency relationship where one method, technique, or approach necessitates another as a prerequisite, component, or enabling condition for its implementation or functioning. For example, 'Fine-tuning requires pre-trained models' or 'Attention mechanism requires learned query, key, and value projections.'",
+      "justification": "Understanding prerequisites is fundamental for practical implementation and learning sequencing, yet this causal-dependency relation is underspecified in current schemas. 'Part-of' captures composition but not necessity; 'Used-for' captures application but not dependency. 'Requires' explicitly models what must exist or be implemented first, crucial for newcomers planning research or implementation. Extraction leverages modal language ('requires,' 'needs,' 'necessitates,' 'depends on,' 'assumes') commonly found in method descriptions. Evaluation involves verifying logical dependency—can A function without B? This relation fills a critical gap in modeling the prerequisite structure of scientific knowledge."
+    },
+    
+    "Enables": {
+      "label": "Enables",
+      "description": "Indicates that one innovation, technique, or finding makes another application, capability, or research direction possible or practical. This forward-looking causal relation captures how breakthroughs open new possibilities. For instance, 'GPU acceleration enables training of deep neural networks with millions of parameters' or 'Self-attention mechanism enables efficient modeling of long-range dependencies.'",
+      "justification": "While 'Requires' captures prerequisites, 'Enables' captures consequential impact—what new capabilities or research directions a contribution unlocks. This forward-causal relation is crucial for understanding research impact and identifying foundational versus incremental contributions. For newcomers, it clarifies which papers introduced paradigm-shifting capabilities. Extraction focuses on consequence-marking phrases ('enables,' 'makes possible,' 'allows,' 'facilitates'). Evaluation involves verifying temporal ordering (enabler precedes enabled) and checking whether the enabled capability is genuinely novel or previously infeasible. This relation is distinct from 'Used-for' in emphasizing novel capability creation rather than routine application, and has not been explicitly formalized in existing annotation schemas."
+    },
+    
+    "Adapts-from": {
+      "label": "Adapts-from",
+      "description": "Represents cross-domain knowledge transfer where a method, technique, or concept originating in one research area is modified and applied to a different domain or problem context. For example, 'Vision Transformers adapt the Transformer architecture from NLP to computer vision' or 'Graph neural networks adapt convolutional operations from image processing to graph-structured data.'",
+      "justification": "Interdisciplinary knowledge transfer is a major source of innovation, yet current schemas do not distinguish domain-crossing adaptations from within-domain extensions. 'Adapts-from' explicitly captures this transfer, helping newcomers identify methodological bridges between fields and understand how techniques propagate across domains. This is particularly valuable in rapidly evolving interdisciplinary areas. Extraction relies on domain-transition markers ('adapted from,' 'applied to,' 'transferred from,' 'inspired by') often found when papers introduce methods from other fields. Evaluation involves verifying that the source and target belong to different established domains (e.g., NLP → Vision, Physics → ML). This relation is novel and uniquely captures the interdisciplinary dimension of research progress."
+    },
+    
+    "Achieves": {
+      "label": "Achieves",
+      "description": "Links a method or approach to specific quantitative outcomes, performance milestones, or empirical results it attains, capturing the relationship between techniques and their measured impacts. For instance, 'BERT achieves 93.2% accuracy on GLUE benchmark' or 'Novel pruning technique achieves 10x compression with minimal accuracy loss.'",
+      "justification": "Performance outcomes are central to evaluating research contributions, yet existing schemas focus on structural relationships rather than empirical achievements. 'Achieves' connects methods to their concrete results, enabling newcomers to quickly assess practical utility and compare approaches quantitatively. This differs from 'Outperforms' (comparative) and 'Evaluation-Metric' (entity type) by explicitly modeling the achievement relationship. Extraction is highly feasible through result-reporting language ('achieves,' 'attains,' 'reaches,' 'obtains') paired with numerical metrics ubiquitous in abstracts. Evaluation involves verifying the presence of quantitative claims with specific metrics. This relation uniquely captures the empirical grounding of research and has not been formalized in structural annotation schemas, making it novel and practically valuable."
+    },
+    
+    "Challenges": {
+      "label": "Challenges",
+      "description": "Indicates that one work questions, re-examines, or casts doubt upon assumptions, methodologies, or conclusions from prior research without necessarily providing contradictory evidence. This relation captures critical discourse and theoretical debate. For example, 'Recent analysis challenges the assumption that attention weights indicate model reasoning' or 'Theoretical work challenges the sufficiency of current evaluation metrics.'",
+      "justification": "Scientific skepticism and critical analysis drive field maturation, yet schemas typically lack relations for non-empirical disagreement. 'Challenges' differs from 'Contradicts' (requires opposing evidence) by capturing conceptual or methodological critique. For newcomers, this relation identifies assumptions that should be questioned and areas of active theoretical debate, promoting critical thinking. Extraction targets skeptical language ('challenges,' 'questions,' 'casts doubt,' 're-examines,' 'disputes') without requiring empirical contradiction. Evaluation assesses whether the challenging work engages critically with specific prior claims rather than simply differing in approach. This epistemological relation adds a crucial dimension to knowledge graphs by modeling uncertainty and debate, which is absent from existing schemas focused on positive knowledge construction."
+    }
+  },
+  
+  "metadata": {
+    "total_relations": 10,
+    "design_principles": [
+      "Extractable from abstracts and keywords using basic LLM capabilities",
+      "Focus on cross-paper relationships not captured in single-paper schemas",
+      "Emphasize relationships valuable for domain learning and comprehension",
+      "Distinguish between similar but semantically distinct relations",
+      "Provide clear evaluation criteria for automated and manual validation",
+      "Novel relations not formalized in existing scientific KG schemas"
+    ],
+    "evaluation_approach": [
+      "Temporal verification (appropriate chronological ordering)",
+      "Citation checking (relevant papers cite each other when applicable)",
+      "Linguistic markers (presence of relation-specific phrases in abstracts)",
+      "Semantic validation (entities have appropriate types for the relation)",
+      "Empirical grounding (performance claims supported by metrics)",
+      "Manual annotation spot-checking (human verification of samples)"
+    ],
+    "newcomer_benefits": [
+      "Learning path identification (Extends, Adapts-from)",
+      "Problem-solution mapping (Solves, Enables)",
+      "Reliability assessment (Validates, Contradicts, Challenges)",
+      "Performance comparison (Outperforms, Achieves)",
+      "Prerequisite understanding (Requires)",
+      "Critical thinking development (Challenges, Contradicts)"
+    ]
+  }
+}

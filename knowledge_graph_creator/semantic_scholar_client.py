@@ -49,6 +49,29 @@ class SemanticScholarClient:
             print(f"Error fetching paper JSON for query '{title}': {e}")
             return None
 
+    def get_paper_by_id(self, paper_id: str) -> Optional[Dict[str, Any]]:
+        """Fetch paper JSON from Semantic Scholar API based on the paper ID."""
+        try:
+            url = f"{self.base_url}/paper/{paper_id}"
+            query_params = {
+                "fields": "paperId,corpusId,url,title,abstract,venue,publicationVenue,year,"
+                "referenceCount,citationCount,influentialCitationCount,isOpenAccess,"
+                "openAccessPdf,fieldsOfStudy,s2FieldsOfStudy,publicationTypes,"
+                "publicationDate,journal,authors",
+            }
+            response = requests.get(
+                url, params=query_params, headers=self.headers
+            ).json()
+
+            if "error" in response:
+                print(f"API Error for paper ID '{paper_id}': {response['error']}")
+                return None
+
+            return response
+        except Exception as e:
+            print(f"Error fetching paper JSON for paper ID '{paper_id}': {e}")
+            return None
+
     def get_paper_citations(
         self, paper_id: str, limit: int = 100, offset: int = 0
     ) -> Optional[Dict[str, Any]]:
