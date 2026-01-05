@@ -2,8 +2,10 @@ import os
 
 from dotenv import load_dotenv
 
+from knowledge_graph_creator import settings
 from knowledge_graph_creator.extractors.reference_details import ReferenceDetails
 from knowledge_graph_creator.orchestrator import PDFToKnowledgeGraphOrchestrator
+from knowledge_graph_creator.settings import get_settings
 
 
 def build_knowledge_graph(
@@ -14,6 +16,7 @@ def build_knowledge_graph(
     parent_venue: str,
     reference_pages: list[int],
     max_papers: int = None,
+    use_settings_file: bool = False,
 ):
     """
     Build a knowledge graph from a PDF paper.
@@ -26,6 +29,7 @@ def build_knowledge_graph(
         parent_venue: Publication venue
         reference_pages: List of page numbers with references
         max_papers: Maximum number of papers to process
+        use_settings_file: Whether or not to use the settings file
     """
     load_dotenv()
 
@@ -40,12 +44,21 @@ def build_knowledge_graph(
     )
 
     # Initialize orchestrator
-    orchestrator = PDFToKnowledgeGraphOrchestrator(
-        neo4j_uri=os.getenv("NEO4J_URI", "bolt://localhost:7687"),
-        neo4j_user=os.getenv("NEO4J_USER", "neo4j"),
-        neo4j_password=os.getenv("NEO4J_PASSWORD"),
-        ss_api_key=os.getenv("SS_API_KEY"),
-    )
+    if use_settings_file:
+        settings = get_settings()
+        orchestrator = PDFToKnowledgeGraphOrchestrator(
+            neo4j_uri=settings.neo4j_uri,
+            neo4j_user=settings.neo4j_user,
+            neo4j_password=settings.neo4j_password,
+            ss_api_key=settings.ss_api_key,
+        )
+    else:
+        orchestrator = PDFToKnowledgeGraphOrchestrator(
+            neo4j_uri=os.getenv("NEO4J_URI", "bolt://localhost:7687"),
+            neo4j_user=os.getenv("NEO4J_USER", "neo4j"),
+            neo4j_password=os.getenv("NEO4J_PASSWORD"),
+            ss_api_key=os.getenv("SS_API_KEY"),
+        )
 
     # Process PDF and build graph
     print(f"Processing PDF: {pdf_path}")
