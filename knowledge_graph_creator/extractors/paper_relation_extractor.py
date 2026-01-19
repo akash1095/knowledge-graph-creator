@@ -32,6 +32,48 @@ class PaperRelationExtractor:
         """Close database connection."""
         self.driver.close()
 
+    def get_non_processed_triplets(
+        self,
+        min_citation_count: int = 0,
+        head_min_year: int = 2022,
+        tail_min_year: int = 2022,
+    ) -> List[Dict]:
+        """Extract citation triplets that have not been processed yet."""
+        query = """
+        MATCH (tail:Paper)-[:CITES]->(head:Paper)
+        WHERE head.abstract IS NOT NULL 
+          AND tail.abstract IS NOT NULL 
+          AND head.citation_count >= $min_citation_count
+          AND head.year >= $head_min_year 
+          AND tail.year >= $tail_min_year
+        
+          AND NOT EXISTS {
+              MATCH (tail)-[r]-(head)
+              WHERE type(r) IN [
+                'ACHIEVES','ADAPTS_FROM','AUTHORED_BY','CHALLENGES',
+                'ENABLES','EXTENDS','OUTPERFORMS','REQUIRES','VALIDATES',
+                'CONTRADICTS','SOLVES'
+                ]
+            }     
+        
+        RETURN tail.paper_id AS tail_id,
+               tail.title AS tail_title,
+               tail.abstract AS tail_abstract,
+               head.paper_id AS head_id,
+               head.title AS head_title,
+               head.abstract AS head_abstract
+        ORDER BY head.citation_count DESC
+
+        """
+        with self.driver.session() as session:
+            result = session.run(
+                query,
+                min_citation_count=min_citation_count,
+                head_min_year=head_min_year,
+                tail_min_year=tail_min_year,
+            )
+            return [dict(record) for record in result]
+
     def get_all_triplets(
         self,
         min_citation_count: int = 0,
