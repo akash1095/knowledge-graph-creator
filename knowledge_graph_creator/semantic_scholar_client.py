@@ -74,7 +74,11 @@ class SemanticScholarClient:
             return None
 
     def get_paper_citations(
-        self, paper_id: str, limit: int = 100, offset: int = 0, publication_year: Optional[int] = None
+        self,
+        paper_id: str,
+        limit: int = 100,
+        offset: int = 0,
+        publication_year: Optional[int] = None,
     ) -> Optional[Dict[str, Any]]:
         """
         Fetch papers that cite the given paper.
@@ -110,7 +114,7 @@ class SemanticScholarClient:
                 "referenceCount,citationCount,isInfluential,influentialCitationCount,isOpenAccess,"
                 "openAccessPdf,fieldsOfStudy,s2FieldsOfStudy,publicationTypes,"
                 "publicationDate,journal,authors",
-                "publicationDateOrYear":publication_year,
+                "publicationDateOrYear": publication_year,
                 "limit": min(limit, 1000),  # API max is 1000
                 "offset": offset,
             }
@@ -130,7 +134,11 @@ class SemanticScholarClient:
             return None
 
     def get_paper_references(
-        self, paper_id: str, limit: int = 500, offset: int = 0, publication_year : Optional[str] = None
+        self,
+        paper_id: str,
+        limit: int = 500,
+        offset: int = 0,
+        publication_year: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         """
         Fetch papers that cite the given paper.
@@ -149,7 +157,7 @@ class SemanticScholarClient:
                 "referenceCount,citationCount,influentialCitationCount,isOpenAccess,"
                 "openAccessPdf,fieldsOfStudy,s2FieldsOfStudy,publicationTypes,"
                 "publicationDate,journal,authors",
-                "publicationDateOrYear":publication_year,
+                "publicationDateOrYear": publication_year,
                 "limit": min(limit, 1000),  # API max is 1000
                 "offset": offset,
             }

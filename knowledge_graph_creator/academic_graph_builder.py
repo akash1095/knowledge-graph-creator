@@ -203,11 +203,11 @@ class AcademicGraphBuilder:
     def add_paper_with_citation_network_from_api(
         self,
         parent_paper_details: dict,
-        parent_paper_references: List[dict],
+        paper_to_process: List[dict],
         include_citations: bool = True,
         max_citations_per_paper: int = 50,
         rate_limit_delay: float = 1.0,
-            publication_year: Optional[str] = None,
+        publication_year: Optional[str] = None,
     ) -> Tuple[dict, List[dict]]:
         """
         Build knowledge graph using Semantic Scholar API response data.
@@ -225,12 +225,14 @@ class AcademicGraphBuilder:
 
         parent_paper_id = parent_paper_details.get("paperId")
         if parent_paper_id:
-            tqdm.write(f"Adding parent paper: {parent_paper_details.get('title', 'Unknown')}")
+            tqdm.write(
+                f"Adding parent paper: {parent_paper_details.get('title', 'Unknown')}"
+            )
             self.kg.add_paper_from_json(parent_paper_details)
             stats["parent_papers"] = 1
             stats["total_papers"] += 1
 
-        references_to_process = parent_paper_references
+        references_to_process = paper_to_process
 
         tqdm.write(f"\nProcessing {len(references_to_process)} references...")
         for ref in tqdm(
@@ -240,7 +242,8 @@ class AcademicGraphBuilder:
             mininterval=0.1,
             dynamic_ncols=True,
         ):
-            cited_paper = ref.get("citedPaper", {})
+            #Note is written only for citation, not for reference, i need to alter code to support both
+            cited_paper = ref.get("citingPaper", {}) or ref.get("citedPaper", {})
             cited_paper_id = cited_paper.get("paperId")
 
             if not cited_paper_id:
@@ -250,7 +253,8 @@ class AcademicGraphBuilder:
             try:
                 self.kg.add_paper_from_json(cited_paper)
                 self.kg.add_citation_relationship(
-                    citing_paper_id=parent_paper_id, cited_paper_id=cited_paper_id,
+                    citing_paper_id=cited_paper_id,
+                    cited_paper_id=parent_paper_id,
                 )
                 stats["pdf_references"] += 1
                 stats["total_papers"] += 1
@@ -259,7 +263,9 @@ class AcademicGraphBuilder:
                 if include_citations:
                     time.sleep(rate_limit_delay)
                     citations = self.ss_client.get_paper_citations(
-                        paper_id=cited_paper_id, limit=max_citations_per_paper, publication_year=publication_year
+                        paper_id=cited_paper_id,
+                        limit=max_citations_per_paper,
+                        publication_year=publication_year,
                     )
 
                     # if reference needed add here reference function.
@@ -288,5 +294,7 @@ class AcademicGraphBuilder:
                 logger.error(f"Failed to add paper {cited_paper_id}: {e}")
                 unsuccessful.append(ref)
 
-        tqdm.write(f"\nCompleted: {stats['total_papers']} papers, {stats['total_relationships']} relationships")
+        tqdm.write(
+            f"\nCompleted: {stats['total_papers']} papers, {stats['total_relationships']} relationships"
+        )
         return stats, unsuccessful

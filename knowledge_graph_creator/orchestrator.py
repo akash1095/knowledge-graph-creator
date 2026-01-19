@@ -1,5 +1,5 @@
 import time
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from loguru import logger
 
@@ -22,6 +22,7 @@ class PDFToKnowledgeGraphOrchestrator:
         neo4j_user: str,
         neo4j_password: str,
         ss_api_key: str = None,
+        rate_limit_delay: float = 1.0,
     ):
         self.pdf_reader = PyMuPDFReader()
         self.reference_extractor = ReferenceExtractor(ReferencePattern.BRACKETED_NUMBER)
@@ -29,6 +30,7 @@ class PDFToKnowledgeGraphOrchestrator:
         self.graph_builder = AcademicGraphBuilder(
             uri=neo4j_uri, user=neo4j_user, password=neo4j_password, api_key=ss_api_key
         )
+        self.rate_limit_delay = rate_limit_delay
 
     def process_pdf_to_graph(
         self,
@@ -82,7 +84,6 @@ class PDFToKnowledgeGraphOrchestrator:
         max_papers: int = None,
         include_citations: bool = True,
         max_citations_per_paper: int = 50,
-        rate_limit_delay: float = 1.0,
     ):
         """
         Extract references from PDF and build extended knowledge graph with citation network.
@@ -134,18 +135,80 @@ class PDFToKnowledgeGraphOrchestrator:
             max_papers=max_papers,
             include_citations=include_citations,
             max_citations_per_paper=max_citations_per_paper,
-            rate_limit_delay=rate_limit_delay,
+            rate_limit_delay=self.rate_limit_delay,
         )
 
         return stats, unsuccessful
+
+    def get_parper_to_process(
+        self,
+        parent_paper_details,
+        citation_network_type,
+        max_citations_per_paper,
+        publication_year,
+    ):
+        """
+        Based On run type fetch paper to process
+
+
+        """
+        all_paper_to_process = []
+        if citation_network_type == "references":
+            # Step 2.1: Extract Reference from Parent Paper
+            time.sleep(self.rate_limit_delay)
+            parent_paper_references = self.graph_builder.ss_client.get_paper_references(
+                paper_id=parent_paper_details["paperId"],
+                limit=max_citations_per_paper,
+                publication_year=publication_year,
+            )
+            logger.info(
+                f"Number of Reference collections: {len(parent_paper_references['data'])}"
+            )
+            all_paper_to_process.extend(parent_paper_references["data"])
+
+        elif citation_network_type == "citations":
+            time.sleep(self.rate_limit_delay)
+            # Step 2.2: Extract Citation from Parent Paper
+            parent_paper_citations = self.graph_builder.ss_client.get_paper_citations(
+                paper_id=parent_paper_details["paperId"],
+                limit=max_citations_per_paper,
+                publication_year=publication_year,
+            )
+            logger.info(
+                f"Number of Citation collections: {len(parent_paper_citations['data'])}"
+            )
+            all_paper_to_process.extend(parent_paper_citations["data"])
+
+        elif citation_network_type == "all":
+            time.sleep(self.rate_limit_delay)
+            parent_paper_references = self.graph_builder.ss_client.get_paper_references(
+                paper_id=parent_paper_details["paperId"],
+                limit=max_citations_per_paper,
+                publication_year=publication_year,
+            )
+            all_paper_to_process.extend(parent_paper_references["data"])
+            time.sleep(self.rate_limit_delay)
+            parent_paper_citations = self.graph_builder.ss_client.get_paper_citations(
+                paper_id=parent_paper_details["paperId"],
+                limit=max_citations_per_paper,
+                publication_year=publication_year,
+            )
+            all_paper_to_process.extend(parent_paper_citations["data"])
+            logger.info(
+                f"Number of Reference and Citation collections: {len(all_paper_to_process)}"
+            )
+
+        return all_paper_to_process
+
 
     def process_title_to_graph_with_network(
         self,
         parent_paper_title: str,
         include_citations: bool = True,
         max_citations_per_paper: int = 100,
+        citation_network_type: Literal["references", "citations", "all"] = "citations",
         rate_limit_delay: float = 1.0,
-            publication_year: Optional[str] = None,
+        publication_year: Optional[str] = None,
     ):
         """
         Extract references using title search
@@ -153,6 +216,7 @@ class PDFToKnowledgeGraphOrchestrator:
             parent_paper_title: Title of the parent paper
             include_citations: Whether to fetch and add citing papers for each paper
             max_citations_per_paper: Maximum number of citing papers to add per paper
+            citation_network_type: Option fetch papers.
             rate_limit_delay: Delay between API calls in seconds (default: 1.0)
             publication_year: Filter by publication year. e.g 2023:2025
 
@@ -169,22 +233,23 @@ class PDFToKnowledgeGraphOrchestrator:
             f"""Parent paper Details: {parent_paper_details['paperId']} - {parent_paper_details.get("title", "")} - Primary Author -{parent_paper_details['authors'][0]['name']}"""
         )
 
-        # Step 2: Extract Reference from Parent Paper
-        time.sleep(rate_limit_delay)
-        parent_paper_references = self.graph_builder.ss_client.get_paper_references(
-            paper_id=parent_paper_details["paperId"], limit=max_citations_per_paper, publication_year=publication_year
+        # Step 2: Extract Reference and Citation from Parent Paper
+        paper_to_process = self.get_parper_to_process(
+            parent_paper_details,
+            citation_network_type,
+            max_citations_per_paper,
+            publication_year,
         )
-        logger.info(f"Number of Reference collections: {len(parent_paper_references['data'])}")
 
         # Step 3: Build knowledge graph with citation network
         stats, unsuccessful = (
             self.graph_builder.add_paper_with_citation_network_from_api(
                 parent_paper_details=parent_paper_details,
-                parent_paper_references=parent_paper_references['data'] or [],
+                paper_to_process=paper_to_process or [],
                 include_citations=include_citations,
                 max_citations_per_paper=max_citations_per_paper,
                 rate_limit_delay=rate_limit_delay,
-                publication_year=publication_year
+                publication_year=publication_year,
             )
         )
 
