@@ -2,6 +2,7 @@ import os
 from typing import Any, Dict, Optional
 
 import requests
+from loguru import logger
 
 
 class SemanticScholarClient:
@@ -73,7 +74,7 @@ class SemanticScholarClient:
             return None
 
     def get_paper_citations(
-        self, paper_id: str, limit: int = 100, offset: int = 0
+        self, paper_id: str, limit: int = 100, offset: int = 0, publication_year: Optional[int] = None
     ) -> Optional[Dict[str, Any]]:
         """
         Fetch papers that cite the given paper.
@@ -82,6 +83,7 @@ class SemanticScholarClient:
             paper_id: Semantic Scholar paper ID
             limit: Maximum number of citations to fetch (max 1000)
             offset: Pagination offset
+            publication_year: Filter references by publication year, e.g., 2022:2023
 
         Returns:
             Dictionary containing citation data with structure:
@@ -105,9 +107,10 @@ class SemanticScholarClient:
             url = f"{self.base_url}/paper/{paper_id}/citations"
             query_params = {
                 "fields": "paperId,corpusId,url,title,abstract,venue,publicationVenue,year,"
-                "referenceCount,citationCount,influentialCitationCount,isOpenAccess,"
+                "referenceCount,citationCount,isInfluential,influentialCitationCount,isOpenAccess,"
                 "openAccessPdf,fieldsOfStudy,s2FieldsOfStudy,publicationTypes,"
                 "publicationDate,journal,authors",
+                "publicationDateOrYear":publication_year,
                 "limit": min(limit, 1000),  # API max is 1000
                 "offset": offset,
             }
@@ -122,6 +125,46 @@ class SemanticScholarClient:
                 return None
 
             return response
+        except Exception as e:
+            print(f"Error fetching citations for paper '{paper_id}': {e}")
+            return None
+
+    def get_paper_references(
+        self, paper_id: str, limit: int = 500, offset: int = 0, publication_year : Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Fetch papers that cite the given paper.
+        Args:
+            paper_id: Semantic Scholar paper ID
+            limit: Maximum number of citations to fetch (max 1000)
+            offset: Pagination offset
+            publication_year: Filter references by publication year, e.g., 2022:2023
+
+
+        """
+        try:
+            url = f"{self.base_url}/paper/{paper_id}/references"
+            query_params = {
+                "fields": "paperId,corpusId,url,title,abstract,venue,publicationVenue,year,"
+                "referenceCount,citationCount,influentialCitationCount,isOpenAccess,"
+                "openAccessPdf,fieldsOfStudy,s2FieldsOfStudy,publicationTypes,"
+                "publicationDate,journal,authors",
+                "publicationDateOrYear":publication_year,
+                "limit": min(limit, 1000),  # API max is 1000
+                "offset": offset,
+            }
+            response = requests.get(
+                url, params=query_params, headers=self.headers
+            ).json()
+
+            if "error" in response:
+                logger.error(
+                    f"API Error fetching citations for paper '{paper_id}': {response['error']}"
+                )
+                return None
+
+            return response
+
         except Exception as e:
             print(f"Error fetching citations for paper '{paper_id}': {e}")
             return None

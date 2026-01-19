@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 from knowledge_graph_creator.llm.llm_inference import LLMInference
 from knowledge_graph_creator.llm.prompts import EXTRACT_PROMPT
-from knowledge_graph_creator.llm.schema import RelationshipAnalysis, Relationship
+from knowledge_graph_creator.llm.schema import RelationshipAnalysis
 
 
 class PaperRelationExtractor:
@@ -33,7 +33,10 @@ class PaperRelationExtractor:
         self.driver.close()
 
     def get_all_triplets(
-        self, min_citation_count: int = 0, min_year: int = 2022
+        self,
+        min_citation_count: int = 0,
+        head_min_year: int = 2022,
+        tail_min_year: int = 2022,
     ) -> List[Dict]:
         """Extract all citation triplets with valid abstracts."""
         query = """
@@ -41,18 +44,22 @@ class PaperRelationExtractor:
         WHERE head.abstract IS NOT NULL 
           AND tail.abstract IS NOT NULL 
           AND head.citation_count >= $min_citation_count
-          AND head.year >= $min_year 
-          AND tail.year >= $min_year
+          AND head.year >= $head_min_year 
+          AND tail.year >= $tail_min_year
         RETURN tail.paper_id AS tail_id,
                tail.title AS tail_title,
                tail.abstract AS tail_abstract,
                head.paper_id AS head_id,
                head.title AS head_title,
                head.abstract AS head_abstract
+        ORDER BY head.citation_count DESC
         """
         with self.driver.session() as session:
             result = session.run(
-                query, min_citation_count=min_citation_count, min_year=min_year
+                query,
+                min_citation_count=min_citation_count,
+                head_min_year=head_min_year,
+                tail_min_year=tail_min_year,
             )
             return [dict(record) for record in result]
 
@@ -81,7 +88,7 @@ class PaperRelationExtractor:
                     prompt=prompt,
                     schema=schema,
                 )
-                if response.status_code == 400:
+                if not isinstance(response, RelationshipAnalysis):
                     logger.error(f"{response}")
                 return response
             except (ValidationError, json.JSONDecodeError) as e:
@@ -133,10 +140,15 @@ class PaperRelationExtractor:
                 )
 
     def process_all_triplets(
-        self, min_citation_count: int = 0, min_year: int = 2022
+        self,
+        min_citation_count: int = 0,
+        head_min_year: int = 2022,
+        tail_min_year: int = 2022,
     ) -> List[Dict]:
         """Process all triplets and extract semantic relations."""
-        triplets = self.get_all_triplets(min_citation_count, min_year)
+        triplets = self.get_all_triplets(
+            min_citation_count, head_min_year, tail_min_year
+        )
         logger.info(f"Found {len(triplets)} triplets to process")
 
         results = []

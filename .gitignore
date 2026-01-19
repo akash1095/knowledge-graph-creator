@@ -168,3 +168,9 @@ dmypy.json
 # Flask
 instance/
 .webassets-cache/
+
+.env.local
+
+
+
+/neo4j-volumes/
