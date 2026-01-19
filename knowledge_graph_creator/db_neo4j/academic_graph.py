@@ -87,6 +87,7 @@ class AcademicKnowledgeGraph:
             p.url = $url,
             p.reference_count = $reference_count,
             p.citation_count = $citation_count,
+            p.is_influential = $is_influential,
             p.influential_citation_count = $influential_citation_count,
             p.is_open_access = $is_open_access,
             p.publication_types = $publication_types,
@@ -117,6 +118,7 @@ class AcademicKnowledgeGraph:
             "url": paper_data.get("url"),
             "reference_count": paper_data.get("referenceCount", 0),
             "citation_count": paper_data.get("citationCount", 0),
+            "is_influential": paper_data.get("isInfluential", False),
             "influential_citation_count": paper_data.get("influentialCitationCount", 0),
             "is_open_access": paper_data.get("isOpenAccess", False),
             "publication_types": paper_data.get("publicationTypes", []),
@@ -128,14 +130,30 @@ class AcademicKnowledgeGraph:
         result = session.run(query, params)
         return result.single()["paper_id"]
 
-    def _create_authors(self, session, paper_data: Dict, paper_id: str):
-        """Create Author nodes and AUTHORED_BY relationships."""
+    @staticmethod
+    def _create_authors(session, paper_data: Dict, paper_id: str):
+        """Create Author nodes and AUTHORED_BY relationships. Reuse existing author nodes."""
         authors = paper_data.get("authors", [])
 
+        if not authors:
+            logger.error(f"Author Field Missing: {paper_id}")
+            return
+
+        authors = [
+            valid_author
+            for valid_author in authors
+            if valid_author.get("authorId") and valid_author.get("name")
+        ]
+
         for index, author_data in enumerate(authors):
+            # MERGE will find existing node by author_id or create new one
             query = """
             MERGE (a:Author {author_id: $author_id})
-            SET a.name = $name,
+            ON CREATE SET 
+                a.name = $name,
+                a.created_at = datetime(),
+                a.updated_at = datetime()
+            ON MATCH SET
                 a.updated_at = datetime()
             WITH a
             MATCH (p:Paper {paper_id: $paper_id})
@@ -147,7 +165,7 @@ class AcademicKnowledgeGraph:
                 "author_id": author_data["authorId"],
                 "name": author_data["name"],
                 "paper_id": paper_id,
-                "author_order": index + 1,  # 1-indexed order
+                "author_order": index + 1,
             }
 
             session.run(query, params)

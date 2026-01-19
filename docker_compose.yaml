@@ -3,21 +3,18 @@ services:
     image: neo4j:latest
     container_name: neo4j
     volumes:
-      # Using absolute paths for reliability
-      - $HOME/neo4j/logs:/logs
-      - $HOME/neo4j/conf:/conf
-      - $HOME/neo4j/data:/data
-      - $HOME/neo4j/plugins:/plugins
-      - $HOME/neo4j/import:/var/lib/neo4j/import
+      - ${NEO4J_HOME:-./neo4j-volumes}/neo4j/logs:/logs
+      - ${NEO4J_HOME:-./neo4j-volumes}/neo4j/data:/data
+      - ${NEO4J_HOME:-./neo4j-volumes}/neo4j/plugins:/plugins
+      - ${NEO4J_HOME:-./neo4j-volumes}/neo4j/import:/var/lib/neo4j/import
     environment:
       - NEO4J_AUTH=neo4j/your_password
-      # Optional: Increase memory for better performance
-      - NEO4J_dbms_memory_pagecache_size=512M
-      - NEO4J_dbms_memory_heap_initial__size=512M
-      - NEO4J_dbms_memory_heap_max__size=1G
+      - NEO4J_server_memory_pagecache_size=512M
+      - NEO4J_server_memory_heap_initial__size=512M
+      - NEO4J_server_memory_heap_max__size=1G
     ports:
-      - "7474:7474"  # HTTP
-      - "7687:7687"  # Bolt
+      - "7474:7474"
+      - "7687:7687"
     restart: always
     networks:
       - neo4j_net
@@ -26,21 +23,38 @@ services:
     image: neo4j:latest
     container_name: neo4j-test
     volumes:
-      # Using absolute paths for reliability
-      - $HOME/neo4j-test/logs:/logs
-      - $HOME/neo4j-test/conf:/conf
-      - $HOME/neo4j-test/data:/data
-      - $HOME/neo4j-test/plugins:/plugins
-      - $HOME/neo4j-test/import:/var/lib/neo4j/import
+      - ${NEO4J_HOME:-./neo4j-volumes}/neo4j-test/logs:/logs
+      - ${NEO4J_HOME:-./neo4j-volumes}/neo4j-test/data:/data
+      - ${NEO4J_HOME:-./neo4j-volumes}/neo4j-test/plugins:/plugins
+      - ${NEO4J_HOME:-./neo4j-volumes}/neo4j-test/import:/var/lib/neo4j/import
     environment:
       - NEO4J_AUTH=neo4j/test_password
-      # Optional: Increase memory for better performance
-      - NEO4J_dbms_memory_pagecache_size=512M
-      - NEO4J_dbms_memory_heap_initial__size=512M
-      - NEO4J_dbms_memory_heap_max__size=1G
+      - NEO4J_server_memory_pagecache_size=512M
+      - NEO4J_server_memory_heap_initial__size=512M
+      - NEO4J_server_memory_heap_max__size=1G
     ports:
-      - "8474:7474"  # HTTP on different port
-      - "8687:7687"  # Bolt on different port
+      - "8474:7474"
+      - "8687:7687"
+    restart: always
+    networks:
+      - neo4j_net
+
+  neo4j-kgfusion:
+    image: neo4j:latest
+    container_name: neo4j-kgfusion
+    volumes:
+      - ${NEO4J_HOME:-./neo4j-volumes}/neo4j-kgfusion/logs:/logs
+      - ${NEO4J_HOME:-./neo4j-volumes}/neo4j-kgfusion/data:/data
+      - ${NEO4J_HOME:-./neo4j-volumes}/neo4j-kgfusion/plugins:/plugins
+      - ${NEO4J_HOME:-./neo4j-volumes}/neo4j-kgfusion/import:/var/lib/neo4j/import
+    environment:
+      - NEO4J_AUTH=neo4j/your_password
+      - NEO4J_server_memory_pagecache_size=512M
+      - NEO4J_server_memory_heap_initial__size=512M
+      - NEO4J_server_memory_heap_max__size=1G
+    ports:
+      - "9474:7474"
+      - "9687:7687"
     restart: always
     networks:
       - neo4j_net
@@ -48,3 +62,5 @@ services:
 networks:
   neo4j_net:
     driver: bridge
+    external: true
+    name: knowledge-graph-network

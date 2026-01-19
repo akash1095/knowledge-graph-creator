@@ -1,6 +1,7 @@
 import time
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
+from loguru import logger
 from tqdm import tqdm
 
 from knowledge_graph_creator.db_neo4j.academic_graph import AcademicKnowledgeGraph
@@ -13,7 +14,7 @@ class AcademicGraphBuilder:
 
     def __init__(self, uri: str, user: str, password: str, api_key: str = None):
         self.kg = AcademicKnowledgeGraph(uri=uri, user=user, password=password)
-        self.ss_client = SemanticScholarClient(api_key=api_key)
+        self.ss_client: SemanticScholarClient = SemanticScholarClient(api_key=api_key)
 
     def add_paper_with_citations(
         self,
@@ -198,3 +199,94 @@ class AcademicGraphBuilder:
             self.kg.close()
 
         return stats, unsuccessful_additions
+
+    def add_paper_with_citation_network_from_api(
+        self,
+        parent_paper_details: dict,
+        parent_paper_references: List[dict],
+        include_citations: bool = True,
+        max_citations_per_paper: int = 50,
+        rate_limit_delay: float = 1.0,
+            publication_year: Optional[str] = None,
+    ) -> Tuple[dict, List[dict]]:
+        """
+        Build knowledge graph using Semantic Scholar API response data.
+
+        publication_year: Filter references by publication year, e.g., 2022:2023
+        """
+        stats = {
+            "parent_papers": 0,
+            "pdf_references": 0,
+            "citations_added": 0,
+            "total_papers": 0,
+            "total_relationships": 0,
+        }
+        unsuccessful = []
+
+        parent_paper_id = parent_paper_details.get("paperId")
+        if parent_paper_id:
+            tqdm.write(f"Adding parent paper: {parent_paper_details.get('title', 'Unknown')}")
+            self.kg.add_paper_from_json(parent_paper_details)
+            stats["parent_papers"] = 1
+            stats["total_papers"] += 1
+
+        references_to_process = parent_paper_references
+
+        tqdm.write(f"\nProcessing {len(references_to_process)} references...")
+        for ref in tqdm(
+            references_to_process,
+            desc="Adding references",
+            colour="green",
+            mininterval=0.1,
+            dynamic_ncols=True,
+        ):
+            cited_paper = ref.get("citedPaper", {})
+            cited_paper_id = cited_paper.get("paperId")
+
+            if not cited_paper_id:
+                unsuccessful.append(ref)
+                continue
+
+            try:
+                self.kg.add_paper_from_json(cited_paper)
+                self.kg.add_citation_relationship(
+                    citing_paper_id=parent_paper_id, cited_paper_id=cited_paper_id,
+                )
+                stats["pdf_references"] += 1
+                stats["total_papers"] += 1
+                stats["total_relationships"] += 1
+
+                if include_citations:
+                    time.sleep(rate_limit_delay)
+                    citations = self.ss_client.get_paper_citations(
+                        paper_id=cited_paper_id, limit=max_citations_per_paper, publication_year=publication_year
+                    )
+
+                    # if reference needed add here reference function.
+
+                    citation_data = citations.get("data") or []
+                    for citation in tqdm(
+                        citation_data,
+                        desc=f"Citations for {cited_paper_id[:8]}",
+                        colour="green",
+                        leave=False,
+                        mininterval=0.1,
+                    ):
+                        citing_paper = citation.get("citingPaper", {})
+                        citing_paper_id = citing_paper.get("paperId")
+                        if citing_paper_id:
+                            self.kg.add_paper_from_json(citing_paper)
+                            self.kg.add_citation_relationship(
+                                citing_paper_id=citing_paper_id,
+                                cited_paper_id=cited_paper_id,
+                            )
+                            stats["citations_added"] += 1
+                            stats["total_papers"] += 1
+                            stats["total_relationships"] += 1
+
+            except Exception as e:
+                logger.error(f"Failed to add paper {cited_paper_id}: {e}")
+                unsuccessful.append(ref)
+
+        tqdm.write(f"\nCompleted: {stats['total_papers']} papers, {stats['total_relationships']} relationships")
+        return stats, unsuccessful

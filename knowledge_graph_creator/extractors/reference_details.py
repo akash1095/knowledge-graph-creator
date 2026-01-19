@@ -1,5 +1,6 @@
 import re
 from dataclasses import asdict, dataclass
+from loguru import logger
 
 
 @dataclass
@@ -33,11 +34,13 @@ class ReferenceDetails:
 class ReferenceDetailsExtractor:
 
     @staticmethod
-    def parse_with_regex(ref_id: int, ref_text: str) -> ReferenceDetails:
+    def parse_with_regex(ref_id: int, ref_text: str) -> ReferenceDetails | None:
 
         pattern = r"^(?P<authors>.+?).\s*(?P<year>\d{4})\.\s*(?P<title>.+?)\.\s*(?P<publish>[^,.]+)(?:[.,]*\s*(?P<page_or_volume>.*))?$"
         match = re.match(pattern, ref_text.strip(), re.DOTALL)
         if not match:
+            logger.error(f"Error parsing reference {ref_id} - '{ref_text}': {match}")
+            return None
             raise ValueError(f"Reference {ref_id} does not match the expected format.")
 
         authors = match.group("authors").strip()
